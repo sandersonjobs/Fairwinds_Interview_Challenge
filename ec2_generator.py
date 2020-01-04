@@ -3,7 +3,8 @@
 import boto3
 import time
 from fabric import Connection
-import httplib2
+import os
+
 
 symfony_install_script = """
 cd ~
@@ -23,11 +24,14 @@ ls ~
 sudo cat /etc/hosts
 """
 
+aws_access_key = os.environ["AWS_ACCESS_KEY"]
+aws_secret_key = os.environ["AWS_SECRET_KEY"]
+pem_key = os.environ["PEM_KEY"]
 client = boto3.client(
     'ec2',
     region_name='eu-west-1',
-    aws_access_key_id='',
-    aws_secret_access_key='',
+    aws_access_key_id=aws_access_key,
+    aws_secret_access_key=aws_secret_key,
 )
 
 def build_server():
@@ -80,18 +84,18 @@ ip_address = instances['Reservations'][0]['Instances'][0]['PublicIpAddress']
 server_up = False
 while server_up is False:
     try:
-        conn = Connection(host=ip_address, user= "ec2-user", connect_kwargs={"key_filename":"/Users/michaelsanderson/Downloads/sanderson_key.pem"},)
+        conn = Connection(host=ip_address, user= "ec2-user", connect_kwargs={"key_filename":pem_key},)
         server_up = True
         print("Connected!")
         print("Building symfony node...")
-        conn.run(symfony_install_script)
-        time.sleep(5)
     except:
         server_up = False
         print("Unable to connect to Server...")
 
+conn.run(symfony_install_script)
 
 try:
+    time.sleep(10)
     conn.run("sudo /home/ec2-user/.symfony/bin/symfony server:list | grep 8000 > /dev/null 2>&1")
     print("Congrats, your symfony web app is accessible at http://{ipaddress}:8000".format(ipaddress=ip_address))
 except:
